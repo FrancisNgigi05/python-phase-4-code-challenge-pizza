@@ -25,5 +25,61 @@ def index():
     return "<h1>Code challenge</h1>"
 
 
+class Restaurants(Resource):
+    def get(self):
+        restaurants = [restaurant.to_dictt() for restaurant in Restaurant.query.all()]
+        response = make_response(restaurants, 200)
+        return response
+
+class RestaurantByIndex(Resource):
+    def get(self, id):
+        restaurant = Restaurant.query.filter(Restaurant.id == id).first()
+
+        if restaurant:
+            response = make_response(restaurant.to_dict(), 200)
+
+        else:
+            body = {"error": "Restaurant not found"}
+            response = make_response(body, 404)
+
+        return response
+
+class Pizzas(Resource):
+    def get(self):
+        pizzas = [pizza.to_dictt() for pizza in Pizza.query.all()]
+        response = make_response(pizzas, 200)
+        return response
+
+class RestaurantPizzas(Resource):
+    def post(self):
+        data = request.get_json()
+
+        if not all(key in data for key in ['price', 'pizza_id', 'restaurant_id']):
+            body = {'error': ['Missing required fields: price, pizza_id, restaurant_id']}
+            return make_response(body, 400)
+
+        try:
+            new_restaurant_pizza = RestaurantPizza(
+                price=data.get('price'),
+                pizza_id=data.get('pizza_id'),
+                restaurant_id=data.get('restaurant_id')
+            )
+            db.session.add(new_restaurant_pizza)
+            db.session.commit()
+
+            new_restaurant_pizza_dict = new_restaurant_pizza.to_dict()
+            response = make_response(new_restaurant_pizza_dict, 201)
+        except Exception as e:
+            db.session.rollback()
+            body = {"error": ['Validation error']}
+            response = make_response(body, 400)
+        
+        return response
+
+api.add_resource(RestaurantPizzas, '/restaurant_pizzas')
+api.add_resource(Pizzas, '/pizzas')
+api.add_resource(RestaurantByIndex, '/restaurants/<int:id>')
+api.add_resource(Restaurants, '/restaurants')
+
 if __name__ == "__main__":
     app.run(port=5555, debug=True)
